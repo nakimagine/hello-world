@@ -21,6 +21,16 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing
 warnings.filterwarnings("ignore")
 pd.set_option("display.precision", 2)
 plt.rcParams["figure.figsize"] = (10, 4)
+# House style: teal / burnt orange / violet, slate ink, dashed grid, no top/right spines
+TEAL, ORANGE, VIOLET, INK, MUTED = "#0D9488", "#C2410C", "#7C3AED", "#334155", "#94A3B8"
+plt.rcParams.update({
+    "font.family": "DejaVu Serif", "font.size": 10, "axes.titlesize": 12, "axes.titleweight": "bold",
+    "axes.titlelocation": "left", "axes.edgecolor": MUTED, "axes.labelcolor": INK, "text.color": INK,
+    "xtick.color": INK, "ytick.color": INK, "axes.spines.top": False, "axes.spines.right": False,
+    "axes.grid": True, "grid.color": "#CBD5E1", "grid.linestyle": "--", "grid.linewidth": 0.6,
+    "axes.facecolor": "#FAFAF7", "figure.facecolor": "white", "legend.frameon": False,
+    "axes.prop_cycle": plt.cycler(color=[TEAL, ORANGE, VIOLET]),
+})
 """)
 
 # ---------------- Q1 ----------------
@@ -39,12 +49,16 @@ print(f"Mean D = {df['D'].mean():.2f} min, SD D = {df['D'].std():.2f} min")
 """)
 code("""
 fig, ax = plt.subplots(figsize=(6, 6))
-ax.scatter(df["Booked Time (min)"], df["D"], s=8, alpha=0.4)
+jit = np.random.default_rng(0).uniform(-1.5, 1.5, len(df))   # small horizontal jitter so stacked bookings are visible
+ax.scatter(df["Booked Time (min)"] + jit, df["D"], s=14, facecolors="none", edgecolors=TEAL, linewidths=0.7, alpha=0.6)
 lim = [0, max(df["Booked Time (min)"].max(), df["D"].max()) + 10]
-ax.plot(lim, lim, "r--", label="45° line (D = Booked)")
+ax.plot(lim, lim, color=ORANGE, lw=1.8, ls=(0, (6, 3)))
+ax.text(lim[1] * 0.97, lim[1] * 0.84, "D = Booked", color=ORANGE, ha="right", fontsize=9, rotation=45, rotation_mode="anchor")
+ax.text(20, lim[1] * 0.88, "Overrun\\n(D > Q)", color=INK, fontsize=9, style="italic")
+ax.text(lim[1] * 0.70, 15, "Unused booked time\\n(Q > D)", color=INK, fontsize=9, style="italic")
 ax.set_xlim(lim); ax.set_ylim(lim)
 ax.set_xlabel("Booked Time (min)"); ax.set_ylabel("Actual occupancy D (min)")
-ax.set_title("Actual vs booked OR time"); ax.legend(); plt.show()
+ax.set_title("Actual vs booked OR time"); plt.show()
 print("Share of cases overrunning their booking:", round((df['D'] > df['Booked Time (min)']).mean(), 3))
 """)
 md("""
@@ -119,17 +133,32 @@ q1_tab.round(2)
 code("""
 from scipy.stats import skew, kurtosis
 print(f"Training residual skewness = {skew(res_tr):.2f}, excess kurtosis = {kurtosis(res_tr):.2f}")
-plt.hist(res_tr, bins=60, density=True, alpha=0.6, label="training residuals")
-xs = np.linspace(res_tr.min(), res_tr.max(), 300); plt.plot(xs, norm.pdf(xs, 0, sigma), "r", label="Normal(0, sigma)")
-plt.axvline(z * sigma, color="r", ls="--", label="Normal 1/3 quantile"); plt.axvline(q_emp_res, color="k", ls=":", label="empirical 1/3 quantile")
-plt.legend(); plt.title("Residuals are right-skewed with heavy tails"); plt.show()
+fig, ax = plt.subplots(figsize=(9, 4))
+ax.hist(res_tr, bins=60, density=True, color=TEAL, alpha=0.35, edgecolor="white", linewidth=0.5)
+ax.hist(res_tr, bins=60, density=True, histtype="step", color=TEAL, linewidth=1.2)
+xs = np.linspace(res_tr.min(), res_tr.max(), 300); ax.plot(xs, norm.pdf(xs, 0, sigma), color=VIOLET, lw=2)
+ymax = ax.get_ylim()[1]
+ax.annotate(f"Normal 1/3 quantile\\n{z*sigma:.1f} min", xy=(z * sigma, 0), xytext=(z * sigma - 15, ymax * 0.75),
+            color=ORANGE, fontsize=9, arrowprops=dict(arrowstyle="-|>", color=ORANGE))
+ax.annotate(f"Empirical 1/3 quantile\\n{q_emp_res:.1f} min", xy=(q_emp_res, 0), xytext=(q_emp_res + 10, ymax * 0.75),
+            color=INK, fontsize=9, arrowprops=dict(arrowstyle="-|>", color=INK))
+ax.plot(z * sigma, 0, marker="v", ms=10, color=ORANGE, clip_on=False); ax.plot(q_emp_res, 0, marker="v", ms=10, color=INK, clip_on=False)
+ax.text(xs[-1] * 0.55, norm.pdf(xs[-1] * 0.25, 0, sigma) + ymax * 0.05, "Normal(0, σ̂) fit", color=VIOLET, fontsize=9)
+ax.set_xlabel("Training residual (min)"); ax.set_ylabel("Density")
+ax.set_title("Residuals are right-skewed with heavy tails"); plt.show()
 """)
 code("""
-fig, ax = plt.subplots(figsize=(8, 4))
-q1_tab[["Unused min", "Overrun min"]].mul([Co, Cu]).rename(columns={"Unused min": "Unused-time cost", "Overrun min": "Overrun cost"}).plot.bar(stacked=True, ax=ax)
-for i, v in enumerate(q1_tab["Total cost ($)"]):
-    ax.text(i, v, f"${v:,.0f}", ha="center", va="bottom")
-ax.set_ylabel("Total test mismatch cost ($)"); ax.set_title("Test-set mismatch cost by booking policy"); plt.xticks(rotation=0); plt.show()
+fig, ax = plt.subplots(figsize=(9, 3.6))
+unused, over = q1_tab["Unused min"] * Co / 1000, q1_tab["Overrun min"] * Cu / 1000
+pos = np.arange(len(q1_tab))[::-1]
+ax.barh(pos, unused, color=TEAL, height=0.55, edgecolor="white", linewidth=2, label="Unused-time cost")
+ax.barh(pos, over, left=unused, color=ORANGE, height=0.55, edgecolor="white", linewidth=2, label="Overrun cost")
+for p_, u, o in zip(pos, unused, over):
+    ax.text(u + o + 4, p_, f"${(u + o):,.1f}k", va="center", fontsize=9, fontweight="bold")
+ax.set_yticks(pos, q1_tab.index); ax.grid(axis="y", visible=False)
+ax.set_xlabel("Total test mismatch cost ($ thousands)"); ax.set_xlim(0, (unused + over).max() * 1.15)
+ax.legend(loc="lower right", ncol=2, fontsize=9)
+ax.set_title("Test-set mismatch cost by booking policy"); plt.show()
 """)
 md("""
 **Comparison:** Both model-based policies cut test mismatch cost by about 56% versus historical bookings (≈ $336k → ≈ $150k), mostly by removing large systematic booking errors.
@@ -162,11 +191,15 @@ assert (dates.diff().dropna() == pd.Timedelta(days=1)).all()
 md("## 2a. Exploratory plot and summary")
 code("""
 fig, ax = plt.subplots(figsize=(12, 4))
-ax.plot(dates, y, lw=0.7, color="k")
-ax.axvspan(dates[0], dates[n_tr-1], color="tab:blue", alpha=0.12, label="Training (60%)")
-ax.axvspan(dates[n_tr], dates[n_trva-1], color="tab:orange", alpha=0.15, label="Validation (20%)")
-ax.axvspan(dates[n_trva], dates[n-1], color="tab:green", alpha=0.12, label="Test (20%)")
-ax.set_ylabel("Daily sales_qty"); ax.set_title("Product 2003228, store 729"); ax.legend(loc="upper left"); plt.show()
+for lo, hi, col, lab in [(0, n_tr - 1, TEAL, "Training (60%)"), (n_tr, n_trva - 1, VIOLET, "Validation (20%)"), (n_trva, n - 1, ORANGE, "Test (20%)")]:
+    ax.fill_between(dates[lo:hi + 1], y[lo:hi + 1], color=col, alpha=0.25, linewidth=0)
+    ax.plot(dates[lo:hi + 1], y[lo:hi + 1], color=col, lw=0.9)
+    ax.text(dates[(lo + hi) // 2], 320, lab, color=col, ha="center", fontweight="bold", fontsize=9)
+for b in [n_tr, n_trva]:
+    ax.axvline(dates[b], color=INK, lw=0.8, ls=":")
+ax.annotate("March 2019 surge", xy=(pd.Timestamp("2019-03-08"), 343), xytext=(pd.Timestamp("2019-06-15"), 250),
+            fontsize=9, arrowprops=dict(arrowstyle="->", color=INK))
+ax.set_ylim(0, 350); ax.set_ylabel("Daily sales_qty"); ax.set_title("Product 2003228, store 729 — daily sales"); plt.show()
 
 summ = pd.Series(y).describe()
 print(summ.round(2))
@@ -180,7 +213,14 @@ dow = s_df.assign(dow=dates.dt.day_name()).groupby("dow")["sales_qty"].agg(["mea
 dow.columns = ["mean", "median", "share zero"]
 dow = dow.reindex(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"])
 print(dow.round(2))
-dow["mean"].plot.bar(title="Mean daily sales by weekday (full period)"); plt.xticks(rotation=0); plt.show()
+fig, ax = plt.subplots(figsize=(8, 3.6))
+cols = [ORANGE if d in ("Friday", "Saturday", "Sunday") else MUTED for d in dow.index]
+ax.hlines(dow.index, 0, dow["mean"], color=cols, lw=3)
+ax.plot(dow["mean"], dow.index, "o", ms=9, color="white", mec=INK, mew=1.2)
+for d, v in dow["mean"].items():
+    ax.text(v + 0.5, d, f"{v:.1f}", va="center", fontsize=9)
+ax.invert_yaxis(); ax.grid(axis="y", visible=False); ax.set_xlim(0, dow["mean"].max() * 1.15)
+ax.set_xlabel("Mean daily sales (units)"); ax.set_title("Mean daily sales by weekday — Fri–Sun highlighted"); plt.show()
 """)
 code("""
 blk = pd.Series(np.where(np.arange(n) < n_tr, "Training", np.where(np.arange(n) < n_trva, "Validation", "Test")))
@@ -231,10 +271,13 @@ best = val_tab["MAE"].idxmin()
 print("Selected model (lowest validation two-day MAE):", best)
 last = val.tail(30)
 fig, ax = plt.subplots(figsize=(12, 4))
-ax.plot(last["origin"], last["actual_2d"], "ko-", label="Actual 2-day total")
-for m, ls in zip(MODELS, ["-", "-", "--"]):
-    ax.plot(last["origin"], last[m], marker=".", ls=ls, label=m)
-ax.set_xlabel("Forecast origin"); ax.set_ylabel("Two-day sales"); ax.set_title("Rolling two-day forecasts, final 30 validation origins"); ax.legend(); plt.show()
+ax.bar(last["origin"], last["actual_2d"], color="#E2E8F0", width=0.8, label="Actual 2-day total", zorder=1)
+for m, col, mk, ls in zip(MODELS, [TEAL, ORANGE, VIOLET], ["D", "s", "^"], ["-", "-", ":"]):
+    ax.plot(last["origin"], last[m], color=col, marker=mk, ms=5, ls=ls, lw=1.6, label=m, zorder=3)
+ax.set_xlabel("Forecast origin"); ax.set_ylabel("Two-day sales (units)")
+ax.legend(loc="upper left", ncol=4, fontsize=8.5, bbox_to_anchor=(0, 1.0))
+ax.set_ylim(0, last[["actual_2d"] + MODELS].values.max() * 1.25)
+ax.set_title("Rolling two-day forecasts vs actual — final 30 validation origins"); fig.autofmt_xdate(); plt.show()
 """)
 md("""
 **Selection:** MA7 has the lowest validation two-day MAE (≈4.9 vs ≈9.8 for both ETS models) and also the lowest RMSE; all three models have small, slightly negative mean error (mild over-forecasting), so there is no bias trade-off to weigh.
@@ -259,9 +302,13 @@ code("""
 print("Mean daily sales  — validation: %.2f, test: %.2f" % (y[n_tr:n_trva].mean(), y[n_trva:].mean()))
 print("SD daily sales    — validation: %.2f, test: %.2f" % (y[n_tr:n_trva].std(ddof=1), y[n_trva:].std(ddof=1)))
 fig, ax = plt.subplots(figsize=(12, 4))
-ax.plot(test2["origin"], test2["actual_2d"], "k-", lw=0.8, label="Actual 2-day total")
-ax.plot(test2["origin"], test2[best], "tab:red", label=f"{best} forecast")
-ax.set_title("Test block: rolling two-day forecasts"); ax.legend(); plt.show()
+err2 = test2["actual_2d"] - test2[best]
+ax.fill_between(test2["origin"], test2[best], test2["actual_2d"], where=err2 >= 0, color=TEAL, alpha=0.25, interpolate=True, label="Under-forecast")
+ax.fill_between(test2["origin"], test2[best], test2["actual_2d"], where=err2 < 0, color=ORANGE, alpha=0.25, interpolate=True, label="Over-forecast")
+ax.plot(test2["origin"], test2["actual_2d"], color=INK, lw=0.8, label="Actual 2-day total")
+ax.plot(test2["origin"], test2[best], color=VIOLET, lw=1.8, label=f"{best} forecast")
+ax.set_ylabel("Two-day sales (units)"); ax.legend(loc="upper right", ncol=4, fontsize=8.5)
+ax.set_title("Test block: rolling two-day forecasts"); plt.show()
 """)
 
 # ---------------- Q3 ----------------
@@ -344,9 +391,14 @@ The forecast-based policy tracks the current level and weekly pattern, and its s
 """)
 code("""
 fig, ax = plt.subplots(figsize=(12, 4))
-ax.step(pd.to_datetime(rp["Date"]), rp["Reorder point R_t"], where="mid", label="Forecast-based R_t")
-ax.axhline(R_norm, color="r", ls="--", label=f"Fixed Normal R = {R_norm}")
-ax.set_title("Reorder point by test day"); ax.legend(); plt.show()
+rd = pd.to_datetime(rp["Date"])
+ax.fill_between(rd, rp["Reorder point R_t"], step="mid", color=TEAL, alpha=0.2)
+ax.step(rd, rp["Reorder point R_t"], where="mid", color=TEAL, lw=1.4)
+ax.axhline(R_norm, color=ORANGE, lw=2, ls=(0, (1, 2)))
+ax.text(rd.iloc[5], R_norm + 2.5, f"Fixed Normal R = {R_norm}", color=ORANGE, fontweight="bold", fontsize=9)
+ax.text(rd.iloc[5], rp["Reorder point R_t"].max() + 3, "Forecast-based R_t (ETS 2-day forecast + SS)", color=TEAL, fontweight="bold", fontsize=9)
+ax.set_ylim(0, R_norm + 12); ax.set_ylabel("Reorder point (units)")
+ax.set_title("Reorder point by test day"); plt.show()
 """)
 
 nb = nbf.v4.new_notebook(); nb["cells"] = cells
