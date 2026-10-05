@@ -21,15 +21,11 @@ from statsmodels.tsa.holtwinters import ExponentialSmoothing
 warnings.filterwarnings("ignore")
 pd.set_option("display.precision", 2)
 plt.rcParams["figure.figsize"] = (10, 4)
-# House style: teal / burnt orange / violet, slate ink, dashed grid, no top/right spines
-TEAL, ORANGE, VIOLET, INK, MUTED = "#0D9488", "#C2410C", "#7C3AED", "#334155", "#94A3B8"
+# Default matplotlib fonts and colours; layout tweaks only (dashed grid, no top/right spines, left titles)
+TEAL, ORANGE, VIOLET, INK, MUTED = "tab:blue", "tab:orange", "tab:green", "black", "gray"
 plt.rcParams.update({
-    "font.family": "DejaVu Serif", "font.size": 10, "axes.titlesize": 12, "axes.titleweight": "bold",
-    "axes.titlelocation": "left", "axes.edgecolor": MUTED, "axes.labelcolor": INK, "text.color": INK,
-    "xtick.color": INK, "ytick.color": INK, "axes.spines.top": False, "axes.spines.right": False,
-    "axes.grid": True, "grid.color": "#CBD5E1", "grid.linestyle": "--", "grid.linewidth": 0.6,
-    "axes.facecolor": "#FAFAF7", "figure.facecolor": "white", "legend.frameon": False,
-    "axes.prop_cycle": plt.cycler(color=[TEAL, ORANGE, VIOLET]),
+    "axes.titlelocation": "left", "axes.spines.top": False, "axes.spines.right": False,
+    "axes.grid": True, "grid.linestyle": "--", "grid.linewidth": 0.6, "legend.frameon": False,
 })
 """)
 
@@ -53,9 +49,9 @@ jit = np.random.default_rng(0).uniform(-1.5, 1.5, len(df))   # small horizontal 
 ax.scatter(df["Booked Time (min)"] + jit, df["D"], s=14, facecolors="none", edgecolors=TEAL, linewidths=0.7, alpha=0.6)
 lim = [0, max(df["Booked Time (min)"].max(), df["D"].max()) + 10]
 ax.plot(lim, lim, color=ORANGE, lw=1.8, ls=(0, (6, 3)))
-ax.text(lim[1] * 0.97, lim[1] * 0.84, "D = Booked", color=ORANGE, ha="right", fontsize=9, rotation=45, rotation_mode="anchor")
-ax.text(20, lim[1] * 0.88, "Overrun\\n(D > Q)", color=INK, fontsize=9, style="italic")
-ax.text(lim[1] * 0.70, 15, "Unused booked time\\n(Q > D)", color=INK, fontsize=9, style="italic")
+ax.text(lim[1] * 0.97, lim[1] * 0.84, "D = Booked", color=ORANGE, ha="right", rotation=45, rotation_mode="anchor")
+ax.text(20, lim[1] * 0.88, "Overrun\\n(D > Q)", color=INK)
+ax.text(lim[1] * 0.70, 15, "Unused booked time\\n(Q > D)", color=INK)
 ax.set_xlim(lim); ax.set_ylim(lim)
 ax.set_xlabel("Booked Time (min)"); ax.set_ylabel("Actual occupancy D (min)")
 ax.set_title("Actual vs booked OR time"); plt.show()
@@ -139,11 +135,11 @@ ax.hist(res_tr, bins=60, density=True, histtype="step", color=TEAL, linewidth=1.
 xs = np.linspace(res_tr.min(), res_tr.max(), 300); ax.plot(xs, norm.pdf(xs, 0, sigma), color=VIOLET, lw=2)
 ymax = ax.get_ylim()[1]
 ax.annotate(f"Normal 1/3 quantile\\n{z*sigma:.1f} min", xy=(z * sigma, 0), xytext=(z * sigma - 15, ymax * 0.75),
-            color=ORANGE, fontsize=9, arrowprops=dict(arrowstyle="-|>", color=ORANGE))
+            color=ORANGE, arrowprops=dict(arrowstyle="-|>", color=ORANGE))
 ax.annotate(f"Empirical 1/3 quantile\\n{q_emp_res:.1f} min", xy=(q_emp_res, 0), xytext=(q_emp_res + 10, ymax * 0.75),
-            color=INK, fontsize=9, arrowprops=dict(arrowstyle="-|>", color=INK))
+            color=INK, arrowprops=dict(arrowstyle="-|>", color=INK))
 ax.plot(z * sigma, 0, marker="v", ms=10, color=ORANGE, clip_on=False); ax.plot(q_emp_res, 0, marker="v", ms=10, color=INK, clip_on=False)
-ax.text(xs[-1] * 0.55, norm.pdf(xs[-1] * 0.25, 0, sigma) + ymax * 0.05, "Normal(0, σ̂) fit", color=VIOLET, fontsize=9)
+ax.text(xs[-1] * 0.55, norm.pdf(xs[-1] * 0.25, 0, sigma) + ymax * 0.05, "Normal(0, σ̂) fit", color=VIOLET)
 ax.set_xlabel("Training residual (min)"); ax.set_ylabel("Density")
 ax.set_title("Residuals are right-skewed with heavy tails"); plt.show()
 """)
@@ -154,10 +150,10 @@ pos = np.arange(len(q1_tab))[::-1]
 ax.barh(pos, unused, color=TEAL, height=0.55, edgecolor="white", linewidth=2, label="Unused-time cost")
 ax.barh(pos, over, left=unused, color=ORANGE, height=0.55, edgecolor="white", linewidth=2, label="Overrun cost")
 for p_, u, o in zip(pos, unused, over):
-    ax.text(u + o + 4, p_, f"${(u + o):,.1f}k", va="center", fontsize=9, fontweight="bold")
+    ax.text(u + o + 4, p_, f"${(u + o):,.1f}k", va="center")
 ax.set_yticks(pos, q1_tab.index); ax.grid(axis="y", visible=False)
 ax.set_xlabel("Total test mismatch cost ($ thousands)"); ax.set_xlim(0, (unused + over).max() * 1.15)
-ax.legend(loc="lower right", ncol=2, fontsize=9)
+ax.legend(loc="lower right", ncol=2)
 ax.set_title("Test-set mismatch cost by booking policy"); plt.show()
 """)
 md("""
@@ -194,11 +190,11 @@ fig, ax = plt.subplots(figsize=(12, 4))
 for lo, hi, col, lab in [(0, n_tr - 1, TEAL, "Training (60%)"), (n_tr, n_trva - 1, VIOLET, "Validation (20%)"), (n_trva, n - 1, ORANGE, "Test (20%)")]:
     ax.fill_between(dates[lo:hi + 1], y[lo:hi + 1], color=col, alpha=0.25, linewidth=0)
     ax.plot(dates[lo:hi + 1], y[lo:hi + 1], color=col, lw=0.9)
-    ax.text(dates[(lo + hi) // 2], 320, lab, color=col, ha="center", fontweight="bold", fontsize=9)
+    ax.text(dates[(lo + hi) // 2], 320, lab, color=col, ha="center")
 for b in [n_tr, n_trva]:
     ax.axvline(dates[b], color=INK, lw=0.8, ls=":")
 ax.annotate("March 2019 surge", xy=(pd.Timestamp("2019-03-08"), 343), xytext=(pd.Timestamp("2019-06-15"), 250),
-            fontsize=9, arrowprops=dict(arrowstyle="->", color=INK))
+            arrowprops=dict(arrowstyle="->", color=INK))
 ax.set_ylim(0, 350); ax.set_ylabel("Daily sales_qty"); ax.set_title("Product 2003228, store 729 — daily sales"); plt.show()
 
 summ = pd.Series(y).describe()
@@ -218,7 +214,7 @@ cols = [ORANGE if d in ("Friday", "Saturday", "Sunday") else MUTED for d in dow.
 ax.hlines(dow.index, 0, dow["mean"], color=cols, lw=3)
 ax.plot(dow["mean"], dow.index, "o", ms=9, color="white", mec=INK, mew=1.2)
 for d, v in dow["mean"].items():
-    ax.text(v + 0.5, d, f"{v:.1f}", va="center", fontsize=9)
+    ax.text(v + 0.5, d, f"{v:.1f}", va="center")
 ax.invert_yaxis(); ax.grid(axis="y", visible=False); ax.set_xlim(0, dow["mean"].max() * 1.15)
 ax.set_xlabel("Mean daily sales (units)"); ax.set_title("Mean daily sales by weekday — Fri–Sun highlighted"); plt.show()
 """)
@@ -271,11 +267,11 @@ best = val_tab["MAE"].idxmin()
 print("Selected model (lowest validation two-day MAE):", best)
 last = val.tail(30)
 fig, ax = plt.subplots(figsize=(12, 4))
-ax.bar(last["origin"], last["actual_2d"], color="#E2E8F0", width=0.8, label="Actual 2-day total", zorder=1)
+ax.bar(last["origin"], last["actual_2d"], color="lightgray", width=0.8, label="Actual 2-day total", zorder=1)
 for m, col, mk, ls in zip(MODELS, [TEAL, ORANGE, VIOLET], ["D", "s", "^"], ["-", "-", ":"]):
     ax.plot(last["origin"], last[m], color=col, marker=mk, ms=5, ls=ls, lw=1.6, label=m, zorder=3)
 ax.set_xlabel("Forecast origin"); ax.set_ylabel("Two-day sales (units)")
-ax.legend(loc="upper left", ncol=4, fontsize=8.5, bbox_to_anchor=(0, 1.0))
+ax.legend(loc="upper left", ncol=4, bbox_to_anchor=(0, 1.0))
 ax.set_ylim(0, last[["actual_2d"] + MODELS].values.max() * 1.25)
 ax.set_title("Rolling two-day forecasts vs actual — final 30 validation origins"); fig.autofmt_xdate(); plt.show()
 """)
@@ -307,7 +303,7 @@ ax.fill_between(test2["origin"], test2[best], test2["actual_2d"], where=err2 >= 
 ax.fill_between(test2["origin"], test2[best], test2["actual_2d"], where=err2 < 0, color=ORANGE, alpha=0.25, interpolate=True, label="Over-forecast")
 ax.plot(test2["origin"], test2["actual_2d"], color=INK, lw=0.8, label="Actual 2-day total")
 ax.plot(test2["origin"], test2[best], color=VIOLET, lw=1.8, label=f"{best} forecast")
-ax.set_ylabel("Two-day sales (units)"); ax.legend(loc="upper right", ncol=4, fontsize=8.5)
+ax.set_ylabel("Two-day sales (units)"); ax.set_ylim(0, test2[["actual_2d", best]].values.max() * 1.2); ax.legend(loc="upper right", ncol=4)
 ax.set_title("Test block: rolling two-day forecasts"); plt.show()
 """)
 
@@ -395,8 +391,8 @@ rd = pd.to_datetime(rp["Date"])
 ax.fill_between(rd, rp["Reorder point R_t"], step="mid", color=TEAL, alpha=0.2)
 ax.step(rd, rp["Reorder point R_t"], where="mid", color=TEAL, lw=1.4)
 ax.axhline(R_norm, color=ORANGE, lw=2, ls=(0, (1, 2)))
-ax.text(rd.iloc[5], R_norm + 2.5, f"Fixed Normal R = {R_norm}", color=ORANGE, fontweight="bold", fontsize=9)
-ax.text(rd.iloc[5], rp["Reorder point R_t"].max() + 3, "Forecast-based R_t (ETS 2-day forecast + SS)", color=TEAL, fontweight="bold", fontsize=9)
+ax.text(rd.iloc[5], R_norm + 2.5, f"Fixed Normal R = {R_norm}", color=ORANGE)
+ax.text(rd.iloc[5], rp["Reorder point R_t"].max() + 3, "Forecast-based R_t (ETS 2-day forecast + SS)", color=TEAL)
 ax.set_ylim(0, R_norm + 12); ax.set_ylabel("Reorder point (units)")
 ax.set_title("Reorder point by test day"); plt.show()
 """)
