@@ -131,7 +131,17 @@ Unit cost has the biggest effect. Raising c from 0.45p to 0.65p lowers CR, cuts 
 - **Pooled residuals:** one shared residual pool with no bands.
 - **Week 5's Normal shortcut:** Q = μ + 0.19 × 461, one σ for every product.
 
-_(Fill in both rows from your rerun of cell 6.5.)_ Expect both to do worse than the banded method. A single σ of 461 units adds about 89 units to every product, including the many with near-zero demand, which inflates unsold stock.
+| Method for choosing Q | Units | Budget | Expected profit |
+|---|---|---|---|
+| **Banded residuals (our method)** | **191,895** | **$5.13M** | **$2.40M** |
+| Pooled residuals, no bands | 369,535 | $9.30M | $1.34M |
+| Normal shortcut, Q = μ + 0.19 × 461 | 591,751 | $20.32M | **−$4.07M** |
+
+Both alternatives do worse.
+- **Pooled residuals** use the big errors of high-demand listings for every product, so low-demand products are overstocked. That needs about 80% more capital for about 45% less profit.
+- **The Normal shortcut** applies one σ (461 units) to every product. It adds about 89 units even to the many products with near-zero demand, which more than doubles expected overage cost to $12.3M and turns profit negative.
+
+This is why we estimate uncertainty locally, by forecast band, rather than with one number for the whole category (Week 5's local-uncertainty idea).
 
 **Back-test (evaluation only; actual test demand was not used to set Q).**
 
