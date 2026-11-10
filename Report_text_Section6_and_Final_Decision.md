@@ -1,6 +1,6 @@
 # Report text: Sections 4–7
 
-_Paste into the report and edit to fit. Lecture weeks are in brackets so you can cite them. "(see output)" means take the number from your latest Colab run. Numbers already filled in come from Sections 1–4, which won't change when you rerun._
+_Paste into the report and edit to fit. "(see output)" means take the number from your latest Colab run. Numbers already filled in come from Sections 1–4, which won't change when you rerun._
 
 ## 4. Competitive landscape: opportunity map
 
@@ -22,7 +22,7 @@ _Section 4's table uses all 9,220 listings. The final decision re-computes the s
 
 Cluster 3 is the clearest case of the last one: it has the fewest listings and the highest demand per listing. _(Describe what cluster 3 looks like from the Section 4 sample images. The final-decision shortlist suggests calculators and label makers.)_
 
-**How to differentiate.** Inside cluster 3, a new design should avoid duplicating its nearest neighbours. The final decision lists those neighbours. Ways to stand apart include a different price point from those neighbours, a bundle (for example, a calculator with a case and batteries), or a feature they lack. Week 3's caution applies: a cluster shows association, not causation, so the cluster is a launch signal, not a guarantee.
+**How to differentiate.** Inside cluster 3, a new design should avoid duplicating its nearest neighbours. The final decision lists those neighbours. Ways to stand apart include a different price point from those neighbours, a bundle (for example, a calculator with a case and batteries), or a feature they lack. Cluster membership alone guarantees nothing: the median cluster-3 listing sells 50 a month while the average is about 300, because a handful of listings sell thousands. The cluster tells us where to look, not what will sell.
 
 ## 5. Predict demand and bestseller status
 
@@ -31,16 +31,16 @@ Cluster 3 is the clearest case of the last one: it has the fewest listings and t
 - its MiniLM title embedding
 - its planned price
 
-Reviews, stars, the bestseller flag and demand are never inputs. Both embeddings are L2-normalized, so direction rather than length drives similarity (Week 4). Price is log-transformed because it is skewed (Week 3), then z-scored (Weeks 3–4). All preprocessing sits inside a pipeline, so in every CV fold it is fitted on that fold's training rows only, which avoids leakage (Week 4).
+Reviews, stars, the bestseller flag and demand are never inputs. Both embeddings are L2-normalized, so two products count as similar when their vectors point the same way, whatever their length. Price runs from $3.48 to $11,998, so it is log-transformed and then standardized; without this, a few projectors would dominate every distance. All preprocessing sits inside a pipeline, so in every CV fold it is fitted on that fold's training rows only and nothing from the validation rows leaks in.
 
-**Model.** K-nearest neighbours (Week 4): a new design's demand is the average demand of its K most similar existing listings. This is the course's cold-start logic.
+**Model.** K-nearest neighbours: a new design's demand is the average demand of its K most similar existing listings. We chose it for two reasons. A new listing has no sales history, so the most direct evidence is how its closest existing look-alikes sell. And those same neighbours are, by definition, its nearest competitors, so one model gives both the forecast and the competitor list the final decision needs.
 
-**Validation (Week 4).**
+**Validation.**
 1. The 80/20 split is made once, stratified on the rare bestseller flag (Section 3).
-2. On the 80%, 5-fold CV (also stratified) chooses K (5–100) and the weight of price in the distance (0 to 2). MAE is the selection metric because demand has many zeros (Week 7).
+2. On the 80%, 5-fold CV (also stratified) chooses K (5–100) and the weight of price in the distance (0 to 2). MAE is the selection metric: about 4 in 10 listings have zero demand while a few sell 9,000 a month, and RMSE would let those few dominate the choice.
 3. The chosen model is refitted on the full 80% and scored once on the untouched 20%.
 
-**Bestseller classifier.** KNN probability = the share of the K neighbours that are bestsellers. Bestsellers are about 0.4% of listings, so a 0.5 cutoff never predicts one. Following Week 4's point that the cutoff should reflect the cost of each error, CV chooses K and the cutoff to maximize balanced accuracy.
+**Bestseller classifier.** KNN probability = the share of the K neighbours that are bestsellers. Bestsellers are about 0.4% of listings, so a 0.5 cutoff never predicts one. So CV chooses K and the cutoff together, maximizing balanced accuracy, which weighs missing a bestseller as heavily as a false alarm.
 
 **Revenue proxy.** Predicted revenue = predicted demand × planned price.
 
@@ -60,18 +60,17 @@ Reviews, stars, the bestseller flag and demand are never inputs. Both embeddings
 
 **What the results mean:**
 - **Test error matches CV error** (217.5 vs 215.9), so the model was not overfitted to the training set.
-- **KNN beats the predict-the-mean benchmark by about 7.5%.** The gain is real but modest: design similarity explains only part of demand, consistent with Week 3's finding that visual clusters explain a small share of sales variation.
-- **The bestseller classifier does not work on the test set.** There are only 7 bestsellers among 1,844 test listings, it caught none, and balanced accuracy is below 0.5. The 0.966 accuracy is misleading because it comes almost entirely from predicting "not a bestseller" (Week 4: accuracy hides imbalance). Bestseller status depends on things a seller can't see before launch, such as reviews and ranking history.
+- **KNN beats the predict-the-mean benchmark by about 7.5%.** The gain is real but modest. How a product looks and is titled explains only part of its sales; brand, reviews and ranking history explain the rest, and none of those are known before launch.
+- **The bestseller classifier does not work on the test set.** There are only 7 bestsellers among 1,844 test listings, it caught none, and balanced accuracy is below 0.5. The 0.966 accuracy is misleading: predicting "not a bestseller" for everything would score 0.996. Bestseller status depends on things a seller can't see before launch, such as reviews and ranking history.
 
 **Limits.** The test set checks predictions on unseen *existing* listings. It does not validate future launches or remove snapshot selection bias.
 
 ## 6. Recommend initial inventory
 
-**Demand scenarios.** The newsvendor needs a distribution, not a point forecast (Week 5).
-1. Using the same 5 folds, every training product gets an out-of-fold prediction from a model that never saw it. The residual is e = actual − forecast (Week 7).
-2. Error size grows with the forecast. Training products are split into 10 bands by predicted demand, and each band keeps its own residuals. This is a local uncertainty estimate, like Week 5's KNN neighbour spread.
+**Demand scenarios.** Choosing a stock level means trading the cost of leftovers against the cost of running out, and that needs a range of possible demands, not one forecast.
+1. Using the same 5 folds, every training product gets an out-of-fold prediction from a model that never saw it. The residual is e = actual − forecast.
+2. Error size grows with the forecast. Training products are split into 10 bands by predicted demand, and each band keeps its own residuals. The band table shows why: the residual spread rises from about 58 units in the lowest band to about 900 in the highest, so one shared error range would overstock small products and understock big ones.
 3. Each test product's scenarios are max(0, forecast + each residual in its band): about 740 equally likely 30-day demands, all nonnegative as the brief requires.
-4. Calibration check (Week 10). Compare the average scenario mean with the average point forecast and the training average (see output). The scenarios add the model's historical errors, so they correct any systematic over-forecasting.
 
 **Cost assumptions (brief defaults).**
 
@@ -84,13 +83,13 @@ Reviews, stars, the bestseller flag and demand are never inputs. Both embeddings
 | Co = c − s | overage cost | 0.405p |
 | CR = Cu/(Cu + Co) | critical ratio | 0.576 |
 
-**Order rule (Weeks 5, 10).** Q* is the smallest scenario demand whose cumulative probability reaches 0.576, rounded up. Because c and s scale with p, CR is the same for every product.
+**Order rule (newsvendor).** Q* is the smallest scenario demand whose cumulative probability reaches 0.576, rounded up. Because c and s scale with p, CR is the same for every product.
 
-**Profit.** Expected profit = p·E[min(Q,D)] + s·E[(Q−D)+] − cQ = (p−c)E[D] − Co·E[(Q−D)+] − Cu·E[(D−Q)+] (Week 5). Procurement spend cQ is the budget. The loss on unsold units is already in the overage term, so cQ is not added to the mismatch cost. The notebook prints a check that both forms give the same total.
+**Profit.** Expected profit = p·E[min(Q,D)] + s·E[(Q−D)+] − cQ = (p−c)E[D] − Co·E[(Q−D)+] − Cu·E[(D−Q)+]. Procurement spend cQ is the budget. The loss on unsold units is already in the overage term, so cQ is not added to the mismatch cost. The notebook prints a check that both forms give the same total.
 
 **Other assumptions.** One order with no reorder within 30 days, no holding or FBA fees beyond c, and lost sales are not backlogged. `boughtInLastMonth` is rounded down, so Q is probably conservative.
 
-**Calibration.** The average point forecast is 231.9 units, but the average scenario mean is 199.9. That is closer to the training average of 183.6. The CV residuals correct the KNN model's tendency to over-forecast.
+**Sanity check.** The average point forecast is 231.9 units, but the average scenario mean is 199.9. That is closer to the training average of 183.6. The CV residuals correct the KNN model's tendency to over-forecast.
 
 **Results.** Q and cQ for every test product are in `inventory_plan_test_products.csv`. Category totals under the base-case costs:
 
@@ -125,11 +124,11 @@ The 142 products with Q = 0 are those where more than 57.6% of scenarios are zer
 | s = 0.30c | 0.636 | $6.48M | $2.85M |
 | s = 0.50c | 0.710 | $9.53M | $3.55M |
 
-Unit cost has the biggest effect. Raising c from 0.45p to 0.65p lowers CR, cuts the budget by about 30% and cuts expected profit by about two-thirds. A higher recovery value s raises CR, so we stock more: a better salvage deal, such as a supplier buyback, justifies a larger first order (Week 5).
+Unit cost has the biggest effect. Raising c from 0.45p to 0.65p lowers CR, cuts the budget by about 30% and cuts expected profit by about two-thirds. A higher recovery value s raises CR, so we stock more: a better salvage deal, such as a supplier buyback, justifies a larger first order.
 
 **Two scenario-method checks** pick Q a different way, then judge it against the same banded scenarios:
 - **Pooled residuals:** one shared residual pool with no bands.
-- **Week 5's Normal shortcut:** Q = μ + 0.19 × 461, one σ for every product.
+- **Normal shortcut:** Q = μ + 0.19 × 461, the textbook formula with one σ for every product.
 
 | Method for choosing Q | Units | Budget | Expected profit |
 |---|---|---|---|
@@ -141,7 +140,7 @@ Both alternatives do worse.
 - **Pooled residuals** use the big errors of high-demand listings for every product, so low-demand products are overstocked. That needs about 80% more capital for about 45% less profit.
 - **The Normal shortcut** applies one σ (461 units) to every product. It adds about 89 units even to the many products with near-zero demand, which more than doubles expected overage cost to $12.3M and turns profit negative.
 
-This is why we estimate uncertainty locally, by forecast band, rather than with one number for the whole category (Week 5's local-uncertainty idea).
+This is why we estimate uncertainty by forecast band rather than with one number for the whole category.
 
 **Back-test (evaluation only; actual test demand was not used to set Q).**
 
@@ -158,12 +157,12 @@ Two honest caveats:
 
 ## 7. Final decision
 
-**Selection rule.** Each step maps to a lecture or to the brief.
-1. **Positive expected profit** under the newsvendor plan (Week 5).
-2. **Launch threshold (Week 4):** at least a 50% chance of selling the training median demand (50 units) or more.
-3. **Opportunity cluster (Section 4 / brief):** demand per listing at or above the median cluster *and* no more listings than the median cluster. This is "meaningful demand and fewer close substitutes". On the training map, only **cluster 3** qualifies.
+**Selection rule.**
+1. **Positive expected profit** under the newsvendor plan.
+2. **Likely to sell:** at least a 50% chance of selling the training median demand (50 units) or more in 30 days.
+3. **Opportunity cluster (Section 4):** demand per listing at or above the median cluster *and* no more listings than the median cluster. This is "meaningful demand and fewer close substitutes". On the training map, only **cluster 3** qualifies.
 4. **Not crowded locally:** the design is not among the 25% of designs whose KNN neighbours are closest.
-5. Among the designs left, choose the **highest expected profit** (Week 5).
+5. Among the designs left, choose the **highest expected profit**.
 
 **Screening funnel:** 1,844 test designs → 1,702 with positive expected profit → 987 likely to sell ≥ 50 units → 87 in the opportunity cluster (3) → **78** not in the most crowded quarter.
 
@@ -191,9 +190,9 @@ Two honest caveats:
 
 The most popular training item is the Scantron 882-E answer sheet: 9,000 units a month at $8.00, an A-class bestseller. Its closest test look-alike is the ScanRite 815-E Scantron-compatible quiz sheet ($9.45).
 
-1. **Its demand doesn't transfer to a copy.** Its 20 closest training look-alikes have median demand of only 200 a month, about 2% of the leader's 9,000. Brand, reviews and ranking history drive the leader's sales, and a new listing has none of them. Week 3 says the same: similar-looking products can sell very differently.
+1. **Its demand doesn't transfer to a copy.** Its 20 closest training look-alikes have median demand of only 200 a month, about 2% of the leader's 9,000. Brand, reviews and ranking history drive the leader's sales, and a new listing has none of them.
 2. **Copying lands in a crowded cluster.** The top seller's test look-alike sits in cluster 5, one of the two largest clusters (1,960 listings). The recommended design comes from cluster 3, the smallest cluster with the highest demand per listing.
-3. **We optimize risk-adjusted profit, not popularity.** Newsvendor expected profit already prices in leftovers (0.405p per unit) and lost sales (0.55p per unit). The copycat's forecast is high (1,115 units), but at $9.45 its expected profit is only **$2,111** (on $2,870 of stock), against **$14,130** for the Casio. The flaw of averages (Week 10) applies: the leader's demand is one extreme outcome, not a new copy's expected outcome.
+3. **We optimize risk-adjusted profit, not popularity.** Newsvendor expected profit already prices in leftovers (0.405p per unit) and lost sales (0.55p per unit). The copycat's forecast is high (1,115 units), but at $9.45 its expected profit is only **$2,111** (on $2,870 of stock), against **$14,130** for the Casio.
 4. **No look-ahead.** "Copy the top seller" relies on observed demand. Our rule uses only pre-launch information: forecast, CV error distribution and training-set market summaries.
 
-**Caveats.** The data is a single snapshot and the demand proxy is coarse. The bestseller model is weak, so its probability is reported but not used to rank. We recommend a test order of Q units, then reordering from the first weeks of real sales. This is the test-and-repeat logic of Weeks 3–4 (SHEIN).
+**Caveats.** The data is a single snapshot and the demand proxy is coarse. The bestseller model is weak, so its probability is reported but not used to rank. We recommend a test order of Q units, then reordering from the first weeks of real sales. The first month's sales then replace the forecast as the best evidence.
