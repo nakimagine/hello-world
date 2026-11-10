@@ -1,6 +1,18 @@
-# Report text: Sections 4–7
+# Report text: Sections 2, 4–7
 
 _Paste into the report and edit to fit. "(see output)" means take the number from your latest Colab run. Numbers already filled in come from Sections 1–4, which won't change when you rerun._
+
+## 2. ABC analysis: what describes each class
+
+The most frequent title words are almost the same in every class (black, printer, ink, cartridge, pack). So we also compared, for each class, which words appear much more often in its titles than in the other two classes:
+
+| Class | Distinctive words (share of titles in this class vs the other two) | What it describes |
+|---|---|---|
+| A (80% of revenue) | genuine (6% vs 2%), amazon (5% vs 1%), capacity (6% vs 3%), printing, duplex, shredder, color (25% vs 15%) | Genuine brand-name and high-capacity supplies, plus office machines (duplex printers, shredders) |
+| B (next 15%) | remanufactured (13% vs 8%), replacement (41% vs 31%), cyan / magenta / yellow (15% vs 10%), workforce, mfc, cli | Third-party compatible and remanufactured colour cartridges made for specific printer lines (Epson WorkForce, Brother MFC, Canon CLI) |
+| C (last 5%) | headset (4% vs 0%), telephone, phone, battery, barcode, usb, scanner, power | A long tail of electronics and gadgets: headsets, phones, barcode scanners, batteries |
+
+Revenue concentrates in consumables bought again and again, led by genuine brand-name supplies. Compatible cartridges form the middle, and one-off gadgets make up the tail.
 
 ## 4. Competitive landscape: opportunity map
 
@@ -73,7 +85,7 @@ Reviews, stars, the bestseller flag and demand are never inputs. Both embeddings
 
 **What the results mean:**
 - **Test error matches CV error** (217.5 vs 215.9), so the model was not overfitted to the training set.
-- **The model cannot predict blockbusters.** On the predicted-versus-observed plot, predictions rarely exceed about 2,000 units, while some test listings actually sold 3,000–8,000. KNN averages over neighbours, so top sellers are always under-predicted. This also means a new listing should not expect top-seller demand just because it resembles one (see the final decision).
+- **The model cannot predict blockbusters.** On the predicted-versus-observed plot, predictions rarely exceed about 2,000 units, while some test listings actually sold 3,000–8,000. KNN averages over neighbours, so top sellers are always under-predicted, and many zero-demand listings get positive forecasts. On the log-scale plot the cloud still rises with observed demand, so the model ranks products sensibly even though its individual forecasts are noisy. This also means a new listing should not expect top-seller demand just because it resembles one (see the final decision).
 - **KNN beats the predict-the-mean benchmark by about 7.5%.** The gain is real but modest. How a product looks and is titled explains only part of its sales; brand, reviews and ranking history explain the rest, and none of those are known before launch.
 - **The bestseller classifier does not work on the test set.** There are only 7 bestsellers among 1,844 test listings, it caught none, and balanced accuracy is below 0.5. The 0.966 accuracy is misleading: predicting "not a bestseller" for everything would score 0.996. Bestseller status depends on things a seller can't see before launch, such as reviews and ranking history.
 
