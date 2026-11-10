@@ -1,6 +1,6 @@
 # Report text: Sections 2, 4–7
 
-_Paste into the report and edit to fit. "(see output)" means take the number from your latest Colab run. Numbers already filled in come from Sections 1–4, which won't change when you rerun._
+_Paste into the report and edit to fit. Every number comes from the final notebook run._
 
 ## 2. ABC analysis: what describes each class
 
