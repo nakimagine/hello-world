@@ -4,23 +4,36 @@ _Paste into the report and edit to fit. "(see output)" means take the number fro
 
 ## 4. Competitive landscape: opportunity map
 
+**Choosing K.** We ran K-means on the DINOv2 image embeddings for K = 3 to 12 and checked inertia and silhouette for each. Silhouette is low everywhere: every value is below 0.10, the highest is 0.096 at K = 7, and K = 6 scores 0.091. The inertia curve bends gradually with no sharp elbow. Product photos in this category overlap heavily (black devices on white backgrounds, cartridge boxes), so the numbers alone cannot separate K = 6 from K = 7. We chose K = 6 because inspecting the sample images gives six distinct, nameable families:
+
+| Cluster | Visual family |
+|---|---|
+| 0 | Handheld gadgets: presentation clickers, headsets, laser pointers, device cases |
+| 1 | Office machines: laminators, printers, scanners |
+| 2 | Laser toner cartridges |
+| 3 | Calculators and cordless phones |
+| 4 | Ink-cartridge multipacks |
+| 5 | Mixed supplies: refill ink bottles, OEM ink boxes, carrying cases, cleaning kits |
+
+Cluster 5 is the least coherent: it collects products that fit no other family. Its statistics describe a mixed group rather than a single niche.
+
 _Section 4's table uses all 9,220 listings. The final decision re-computes the same clusters' statistics on the 80% training set only, so no test demand feeds the decision. The two tables show the same pattern._
 
-| Cluster | Listings | Total demand | Demand / listing | Median price | A-class share | Reading |
+| Cluster (family) | Listings | Total demand | Demand / listing | Median price | A-class share | Reading |
 |---|---|---|---|---|---|---|
-| 0 | 1,806 | 163,900 | 91 | $76 | 9.5% | Large but weak (median demand 0): **unattractive** |
-| 1 | 933 | 170,400 | 183 | $150 | 27.0% | Premium, demand concentrated in a few A-class winners |
-| 2 | 1,676 | 232,350 | 139 | $60 | 15.4% | Large, below-average demand per listing |
-| 3 | 753 | 230,000 | **305** | $45 | 18.6% | **Smallest cluster, highest demand per listing: the opportunity** |
-| 4 | 2,092 | 492,200 | 235 | $35 | 14.6% | Strongest total demand but the most listings: **crowded** |
-| 5 | 1,960 | 425,950 | 217 | $32 | 11.7% | Strong demand, also crowded |
+| 0 Gadgets | 1,806 | 163,900 | 91 | $76 | 9.5% | Large but weak (median demand 0): **unattractive** |
+| 1 Office machines | 933 | 170,400 | 183 | $150 | 27.0% | Premium, demand concentrated in a few A-class winners |
+| 2 Toner | 1,676 | 232,350 | 139 | $60 | 15.4% | Large, below-average demand per listing |
+| 3 Calculators & phones | 753 | 230,000 | **305** | $45 | 18.6% | **Smallest cluster, highest demand per listing: the opportunity** |
+| 4 Ink multipacks | 2,092 | 492,200 | 235 | $35 | 14.6% | Strongest total demand but the most listings: **crowded** |
+| 5 Mixed supplies | 1,960 | 425,950 | 217 | $32 | 11.7% | Strong demand, also crowded |
 
 **Where a proposed design should sit.** The brief's map has three cases:
 - A large cluster with strong demand is crowded (clusters 4 and 5).
 - A cluster with weak demand is unattractive (cluster 0).
 - A cluster with meaningful demand and fewer close substitutes is worth testing.
 
-Cluster 3 is the clearest case of the last one: it has the fewest listings and the highest demand per listing. _(Describe what cluster 3 looks like from the Section 4 sample images. The final-decision shortlist suggests calculators and label makers.)_
+Cluster 3 (calculators and cordless phones) is the clearest case of the last one: it has the fewest listings and the highest demand per listing. It makes sense as a niche. These are durable, brand-led keypad devices with steady demand from students and offices, unlike the commodity ink and toner clusters, where hundreds of compatible listings compete on price.
 
 **How to differentiate.** Inside cluster 3, a new design should avoid duplicating its nearest neighbours. The final decision lists those neighbours. Ways to stand apart include a different price point from those neighbours, a bundle (for example, a calculator with a case and batteries), or a feature they lack. Cluster membership alone guarantees nothing: the median cluster-3 listing sells 50 a month while the average is about 300, because a handful of listings sell thousands. The cluster tells us where to look, not what will sell.
 
@@ -60,6 +73,7 @@ Reviews, stars, the bestseller flag and demand are never inputs. Both embeddings
 
 **What the results mean:**
 - **Test error matches CV error** (217.5 vs 215.9), so the model was not overfitted to the training set.
+- **The model cannot predict blockbusters.** On the predicted-versus-observed plot, predictions rarely exceed about 2,000 units, while some test listings actually sold 3,000–8,000. KNN averages over neighbours, so top sellers are always under-predicted. This also means a new listing should not expect top-seller demand just because it resembles one (see the final decision).
 - **KNN beats the predict-the-mean benchmark by about 7.5%.** The gain is real but modest. How a product looks and is titled explains only part of its sales; brand, reviews and ranking history explain the rest, and none of those are known before launch.
 - **The bestseller classifier does not work on the test set.** There are only 7 bestsellers among 1,844 test listings, it caught none, and balanced accuracy is below 0.5. The 0.966 accuracy is misleading: predicting "not a bestseller" for everything would score 0.996. Bestseller status depends on things a seller can't see before launch, such as reviews and ranking history.
 
@@ -124,6 +138,8 @@ The 142 products with Q = 0 are those where more than 57.6% of scenarios are zer
 | s = 0.30c | 0.636 | $6.48M | $2.85M |
 | s = 0.50c | 0.710 | $9.53M | $3.55M |
 
+_(For the chart: moving right on the x-axis means cheaper procurement, because c/p falls from 0.70 to 0.25 as the critical ratio rises.)_
+
 Unit cost has the biggest effect. Raising c from 0.45p to 0.65p lowers CR, cuts the budget by about 30% and cuts expected profit by about two-thirds. A higher recovery value s raises CR, so we stock more: a better salvage deal, such as a supplier buyback, justifies a larger first order.
 
 **Two scenario-method checks** pick Q a different way, then judge it against the same banded scenarios:
@@ -182,7 +198,7 @@ Two honest caveats:
 
 **Nearest competing listings.** These are the 10 training listings the KNN model averaged. They are mostly Casio and Texas Instruments scientific calculators priced $9–$25, and most are A-class (for example the Casio fx-115ES PLUS at 8,000 a month and the fx-300ES PLUS at 2,000–3,000 a month). The neighbourhood has proven demand, and it is a niche of its own rather than a slice of the large ink-and-toner clusters.
 
-**Risk to flag: price.** One neighbour is the same FX-260 model listed at **$9.49**, selling 2,000 a month. At $23.48 our listing must justify the premium, for example with a bundle (protective case, spare battery, exam-ready pack) or a back-to-school timing push. Otherwise it should be priced closer to the market. This is the "how could it be differentiated" answer for Section 4.
+**Risk to flag: price.** One neighbour is the same FX-260 model listed at **$9.49**, selling 2,000 a month. Our demand forecast does not fall when our price is above the competition's, so the $14,130 expected profit may be overstated. The recommendation still holds at the market price. With the same demand scenarios, the critical ratio and Q are unchanged and expected profit scales with price: at $9.49 it would be about **$5,700**. That is still positive and still well above the $2,111 for the top-seller copycat. To earn the $23.48 price, the listing needs a reason to pay more, such as a bundle (protective case, spare battery, exam-ready pack) or a back-to-school timing push. Otherwise it should be priced closer to the market. This is the "how could it be differentiated" answer for Section 4.
 
 **Runner-up.** The Auto-Cut Label Maker PS-100E ($79.99, cluster 3) has almost the same expected profit ($14,127). Its neighbours' median demand is only 100 a month (versus 1,000 for the Casio), and its profit per dollar of stock is lower (0.68 versus 0.97). The calculator is the safer choice: its neighbourhood shows proven demand, and it needs less capital per dollar of expected profit.
 
